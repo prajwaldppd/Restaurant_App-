@@ -3,18 +3,37 @@ import 'package:coffee/pages/main_page.dart';
 import 'package:coffee/pages/order_page.dart';
 import 'package:flutter/material.dart';
 import 'package:coffee/datamanager.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'login_page.dart';
 
 class NavBar extends StatelessWidget {
+  Future<void> logoutUser(BuildContext context) async {
+    await clearTokenFromCache();
+    navigatorKey.currentState?.pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => LoginPage(),
+      ),
+    );
+  }
+
+  Future<void> clearTokenFromCache() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final userData = context.watch<AuthProvider>().userData;
     return Drawer(
       child: ListView(
         // Remove padding
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            accountName: Text('Oflutter.com'),
-            accountEmail: Text('example@gmail.com'),
+            accountName: Text('Username: ${userData?.username}'),
+            accountEmail: Text('Email: ${userData?.email}'),
             currentAccountPicture: CircleAvatar(
               child: ClipOval(
                 child: Image.network(
@@ -78,7 +97,7 @@ class NavBar extends StatelessWidget {
           ListTile(
             title: Text('Exit'),
             leading: Icon(Icons.exit_to_app),
-            onTap: () => Null,
+            onTap: () => logoutUser(context),
           ),
         ],
       ),

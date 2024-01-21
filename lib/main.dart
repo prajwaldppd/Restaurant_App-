@@ -1,14 +1,43 @@
 import 'package:coffee/datamanager.dart';
 import 'package:coffee/pages/Navpage.dart';
+import 'package:coffee/pages/login_page.dart';
 import 'package:coffee/pages/main_page.dart';
 import 'package:coffee/pages/offers_page.dart';
 import 'package:coffee/pages/order_page.dart';
+import 'package:coffee/usermodel.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
+
+class AuthProvider with ChangeNotifier {
+  bool _authenticated = false;
+  UserData? _userData;
+
+  bool get isAuthenticated => _authenticated;
+  UserData? get userData => _userData;
+
+  void setAuthenticated(bool value) {
+    _authenticated = value;
+    notifyListeners();
+  }
+
+  void setUserData(UserData userData) {
+    _userData = userData;
+    notifyListeners();
+  }
+}
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AuthProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -19,12 +48,46 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Coffee Masters',
-      navigatorKey: navigatorKey, // Set the navigatorKey
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.brown,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const AuthChecker(),
     );
+  }
+}
+
+class AuthChecker extends StatelessWidget {
+  const AuthChecker({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: checkLoginStatus(context),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        } else if (snapshot.hasError || !snapshot.data!) {
+          // Not logged in, navigate to login page
+          return Scaffold(
+            body: LoginPage(),
+          );
+        } else {
+          // User is logged in, navigate to home page
+          return const MyHomePage(title: 'Flutter Demo Home Page');
+        }
+      },
+    );
+  }
+
+  Future<bool> checkLoginStatus(BuildContext context) async {
+    // Use context.read to access the AuthProvider
+    final bool isAuthenticated = context.read<AuthProvider>().isAuthenticated;
+
+    // Return the authentication status
+    return isAuthenticated;
   }
 }
 
@@ -39,11 +102,18 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   var selectedIndex = 0;
+  // Add your DataManager class here
   var dataManager = DataManager();
-  Widget currentWidgetPage = const Text("Menu");
+  late Widget currentWidgetPage;
 
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
+    // Set the initial page based on the selectedIndex
+    setCurrentWidgetPage();
+  }
+
+  void setCurrentWidgetPage() {
     switch (selectedIndex) {
       case 0:
         currentWidgetPage = MenuPage(
@@ -59,7 +129,10 @@ class _MyHomePageState extends State<MyHomePage> {
         );
         break;
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Coffee App'),
@@ -71,6 +144,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onTap: (newIndex) {
           setState(() {
             selectedIndex = newIndex;
+            setCurrentWidgetPage();
           });
         },
         backgroundColor: Theme.of(context).primaryColor,
