@@ -28,7 +28,6 @@ class LoginPage extends StatelessWidget {
       );
 
       if (response.statusCode == 200) {
-        // If login is successful, save token in cache and navigate to home page
         final userData = UserData(
           userId: jsonDecode(response.body)['_id'],
           username: jsonDecode(response.body)['username'],
